@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <title>3D Recovery Map</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Updated Three.js and OrbitControls versions for compatibility -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/build/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/controls/OrbitControls.js"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f4f8;
+            color: #1a202c;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 2rem;
+        }
+
+        .container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            max-width: 1200px;
+            width: 100%;
+            margin: auto;
+        }
+
+        #canvas-container {
+            width: 100%;
+            max-width: 600px;
+            aspect-ratio: 1/1;
+            position: relative;
+            background: rgba(255, 255, 255, 0.7);
+            border-radius: 2rem;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            transition: all 0.3s ease-in-out;
+        }
+        
+        #canvas-container:hover {
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+            transform: translateY(-5px);
+        }
+
+        #info-box {
+            background-color: white;
+            border-radius: 1.5rem;
+            padding: 2rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            margin-top: 2rem;
+            width: 100%;
+            max-width: 800px;
+            animation: fadeIn 0.5s ease-out;
+        }
+
+        .fade-in-up {
+            animation: fadeInUp 0.5s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        .message-box {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: #fff;
+            padding: 20px 40px;
+            border-radius: 12px;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.15);
+            z-index: 1000;
+            text-align: center;
+            display: none;
+            opacity: 0;
+            transition: opacity 0.3s ease-in-out;
+            min-width: 300px;
+        }
+        .message-box.show {
+            display: block;
+            opacity: 1;
+        }
+        .message-box-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 999;
+            display: none;
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-slate-100 via-sky-100 to-cyan-200">
+
+    <!-- Main Application Container -->
+    <div class="container py-8">
+        <header class="text-center mb-8">
+            <h1 class="text-4xl md:text-5xl font-extrabold text-slate-800">
+                <span class="bg-clip-text text-transparent bg-gradient-to-r from-sky-500 to-teal-600">3D Body Map</span>
+            </h1>
+            <p class="mt-4 text-lg text-slate-600 max-w-2xl mx-auto">
+                Explore the human body in 3D. Click on a body part to learn about recovery tips, stretches, and more.
+            </p>
+        </header>
+
+        <div id="canvas-container">
+            <canvas id="body-canvas"></canvas>
+            <div id="loading-message" class="absolute inset-0 flex items-center justify-center bg-white/70 backdrop-blur-sm text-lg font-semibold text-slate-700 rounded-3xl z-10">
+                Loading 3D model...
+            </div>
+        </div>
+
+        <div id="info-box" class="hidden">
+            <button id="back-button" class="flex items-center text-sky-600 hover:text-sky-800 mb-4 transition">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd" />
+                </svg>
+                Back to 3D Map
+            </button>
+            <h2 id="part-title" class="text-2xl font-bold text-slate-800 mb-4"></h2>
+            <div id="part-content" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-4"></div>
+        </div>
+    </div>
+    
+    <!-- Custom message box -->
+    <div class="message-box-overlay" id="message-overlay"></div>
+    <div class="message-box" id="message-box">
+        <p id="message-text"></p>
+        <button onclick="closeMessageBox()" class="mt-4 px-4 py-2 bg-sky-500 text-white rounded-md hover:bg-sky-600 transition">OK</button>
+    </div>
+
+    <script>
+        // Custom message box functions
+        function showMessageBox(message) {
+            const msgBox = document.getElementById('message-box');
+            const overlay = document.getElementById('message-overlay');
+            document.getElementById('message-text').innerText = message;
+            msgBox.style.display = 'block';
+            overlay.style.display = 'block';
+            setTimeout(() => {
+                msgBox.classList.add('show');
+            }, 10);
+        }
+
+        function closeMessageBox() {
+            const msgBox = document.getElementById('message-box');
+            const overlay = document.getElementById('message-overlay');
+            msgBox.classList.remove('show');
+            setTimeout(() => {
+                msgBox.style.display = 'none';
+                overlay.style.display = 'none';
+            }, 300);
+        }
+
+        // --- 3D Scene Setup ---
+        let scene, camera, renderer, controls, humanBody, raycaster;
+        let mouse = new THREE.Vector2();
+
+        const canvasContainer = document.getElementById('canvas-container');
+        const canvas = document.getElementById('body-canvas');
+        const loadingMessage = document.getElementById('loading-message');
+        const infoBox = document.getElementById('info-box');
+        const partTitle = document.getElementById('part-title');
+        const partContent = document.getElementById('part-content');
+        const backButton = document.getElementById('back-button');
+
+        const suggestions = {
+            neck: [
+                { icon: '🧘', title: 'Neck Stretch', desc: 'Gently tilt your head side to side to relieve tension.' },
+                { icon: '💆', title: 'Self-Massage', desc: 'Use your fingers to massage the base of your skull.' },
+                { icon: '🪑', title: 'Ergonomics', desc: 'Adjust monitor height to eye level.' }
+            ],
+            back: [
+                { icon: '🧘', title: 'Cat-Cow Stretch', desc: 'Alternate arching and rounding your back.' },
+                { icon: '💆', title: 'Foam Rolling', desc: 'Roll upper and lower back gently.' },
+                { icon: '🪑', title: 'Ergonomics', desc: 'Use lumbar support when sitting.' }
+            ],
+            shoulder: [
+                { icon: '🧘', title: 'Shoulder Rolls', desc: 'Roll shoulders forward and backward 10x.' },
+                { icon: '💆', title: 'Massage', desc: 'Massage the upper trapezius muscle.' },
+                { icon: '🪑', title: 'Ergonomics', desc: 'Keep shoulders relaxed at your desk.' }
+            ],
+            arms: [
+                { icon: '🧘', title: 'Wrist Flexor Stretch', desc: 'Extend arm, palm up, gently pull fingers down.' },
+                { icon: '💆', title: 'Massage', desc: 'Massage forearm muscles.' },
+                { icon: '🪑', title: 'Ergonomics', desc: 'Keep wrists neutral while typing.' }
+            ],
+            legs: [
+                { icon: '🧘', title: 'Quad Stretch', desc: 'Stand, pull foot to glutes, hold.' },
+                { icon: '💆', title: 'Massage', desc: 'Massage around kneecap gently.' },
+                { icon: '🪑', title: 'Ergonomics', desc: 'Avoid sitting with knees bent too long.' }
+            ],
+            head: [
+                { icon: '🧠', title: 'Mindfulness', desc: 'Focus on your breath to reduce stress.' },
+                { icon: '🧘', title: 'Gentle stretches', desc: 'Slowly nod your head up and down.' },
+                { icon: '🪑', title: 'Good Posture', desc: 'Ensure your head is aligned with your spine.' }
+            ]
+        };
+
+        const bodyPartMappings = {
+            'head': 'head',
+            'body': 'back',
+            'leftArm': 'arms',
+            'rightArm': 'arms',
+            'leftLeg': 'legs',
+            'rightLeg': 'legs'
+        };
+
+        function createHumanBody() {
+            // Create a simple human-like figure from basic shapes
+            const body = new THREE.Group();
+            body.name = 'humanBody';
+
+            // Body (simple cylinder)
+            const bodyGeometry = new THREE.BoxGeometry(0.7, 1.8, 0.5);
+            const bodyMaterial = new THREE.MeshLambertMaterial({ color: 0xcccccc });
+            const torso = new THREE.Mesh(bodyGeometry, bodyMaterial);
+            torso.name = 'body';
+            torso.position.y = 0.9;
+            body.add(torso);
+
+            // Head (sphere)
+            const headGeometry = new THREE.SphereGeometry(0.4, 32, 32);
+            const headMaterial = new THREE.MeshLambertMaterial({ color: 0xcccccc });
+            const head = new THREE.Mesh(headGeometry, headMaterial);
+            head.name = 'head';
+            head.position.y = 2.2;
+            body.add(head);
+
+            // Arms (cylinders)
+            const armGeometry = new THREE.CylinderGeometry(0.15, 0.15, 1.2, 32);
+            const armMaterial = new THREE.MeshLambertMaterial({ color: 0xdddddd });
+            const leftArm = new THREE.Mesh(armGeometry, armMaterial);
+            leftArm.name = 'leftArm';
+            leftArm.position.set(-0.5, 1.5, 0);
+            leftArm.rotation.z = Math.PI / 4;
+            body.add(leftArm);
+
+            const rightArm = new THREE.Mesh(armGeometry, armMaterial);
+            rightArm.name = 'rightArm';
+            rightArm.position.set(0.5, 1.5, 0);
+            rightArm.rotation.z = -Math.PI / 4;
+            body.add(rightArm);
+
+            // Legs (cylinders)
+            const legGeometry = new THREE.CylinderGeometry(0.2, 0.2, 1.5, 32);
+            const legMaterial = new THREE.MeshLambertMaterial({ color: 0xdddddd });
+            const leftLeg = new THREE.Mesh(legGeometry, legMaterial);
+            leftLeg.name = 'leftLeg';
+            leftLeg.position.set(-0.25, -0.2, 0);
+            body.add(leftLeg);
+
+            const rightLeg = new THREE.Mesh(legGeometry, legMaterial);
+            rightLeg.name = 'rightLeg';
+            rightLeg.position.set(0.25, -0.2, 0);
+            body.add(rightLeg);
+
+            return body;
+        }
+
+        function init() {
+            // Scene
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0xf0f4f8);
+
+            // Camera
+            const aspect = canvasContainer.clientWidth / canvasContainer.clientHeight;
+            camera = new THREE.PerspectiveCamera(75, aspect, 0.1, 1000);
+            camera.position.z = 5;
+            camera.position.y = 1;
+
+            // Renderer
+            renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true, alpha: true });
+            renderer.setPixelRatio(window.devicePixelRatio);
+            renderer.setSize(canvasContainer.clientWidth, canvasContainer.clientHeight);
+
+            // Lights
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+            scene.add(ambientLight);
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            directionalLight.position.set(0, 5, 5);
+            scene.add(directionalLight);
+
+            // Human Body Model
+            humanBody = createHumanBody();
+            scene.add(humanBody);
+
+            // Controls
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            controls.rotateSpeed = 0.5;
+            controls.minPolarAngle = Math.PI / 3;
+            controls.maxPolarAngle = Math.PI / 1.5;
+            controls.enablePan = false;
+            controls.minDistance = 2;
+            controls.maxDistance = 10;
+
+            // Raycaster for click detection
+            raycaster = new THREE.Raycaster();
+            canvas.addEventListener('click', onCanvasClick, false);
+
+            window.addEventListener('resize', onWindowResize, false);
+
+            loadingMessage.style.display = 'none';
+            infoBox.classList.add('hidden');
+        }
+
+        function onCanvasClick(event) {
+            // Calculate mouse position in normalized device coordinates (-1 to +1)
+            const rect = canvas.getBoundingClientRect();
+            mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+            mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+
+            // Update the picking ray with the camera and mouse position
+            raycaster.setFromCamera(mouse, camera);
+
+            // Find intersections with the human body parts
+            const intersects = raycaster.intersectObjects(humanBody.children);
+
+            if (intersects.length > 0) {
+                const object = intersects[0].object;
+                const partName = bodyPartMappings[object.name];
+                if (partName) {
+                    displaySuggestions(partName);
+                } else {
+                    showMessageBox('No specific information for this body part. Try clicking on the head, body, arms, or legs.');
+                }
+            } else {
+                 showMessageBox('Click on a part of the 3D model to see recovery suggestions.');
+            }
+        }
+
+        function onWindowResize() {
+            const aspect = canvasContainer.clientWidth / canvasContainer.clientHeight;
+            camera.aspect = aspect;
+            camera.updateProjectionMatrix();
+            renderer.setSize(canvasContainer.clientWidth, canvasContainer.clientHeight);
+        }
+
+        function displaySuggestions(part) {
+            const partSuggestions = suggestions[part];
+            partTitle.textContent = `${part.charAt(0).toUpperCase() + part.slice(1)} Recovery Suggestions`;
+            partContent.innerHTML = partSuggestions.map(s => `
+                <div class="p-4 border-2 border-sky-200 bg-sky-50 rounded-xl flex items-start gap-3 fade-in-up">
+                    <div class="text-3xl">${s.icon}</div>
+                    <div>
+                        <h4 class="font-semibold text-sky-900 mb-1">${s.title}</h4>
+                        <p class="text-sm text-slate-700">${s.desc}</p>
+                    </div>
+                </div>
+            `).join('');
+
+            infoBox.classList.remove('hidden');
+            canvasContainer.classList.add('hidden');
+        }
+
+        function goBackTo3DMap() {
+            infoBox.classList.add('hidden');
+            canvasContainer.classList.remove('hidden');
+        }
+
+        backButton.addEventListener('click', goBackTo3DMap);
+
+        window.onload = function() {
+            init();
+            animate();
+        };
+
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            renderer.render(scene, camera);
+        }
+    </script>
+</body>
+</html>
