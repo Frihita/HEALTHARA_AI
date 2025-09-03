@@ -27,10 +27,8 @@
 <body class="bg-gradient-to-br from-emerald-100 to-sky-100 min-h-screen">
 
   <div class="min-h-screen p-4 md:p-8">
-    <!-- Header -->
     <div class="flex items-center gap-4 mb-8 max-w-4xl mx-auto">
       <button onclick="window.history.back()" class="rounded-full p-2 hover:bg-gray-200">
-        <!-- ArrowLeft SVG -->
         <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/>
         </svg>
@@ -39,25 +37,21 @@
     </div>
 
     <div class="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
-      <!-- Left Side - Controls -->
       <div>
         <div class="bg-white rounded-2xl shadow-xl p-0 border-0">
           <div class="flex">
             <button id="tab-ingredients" class="flex-1 py-3 font-semibold border-b-2 border-emerald-500 bg-emerald-50">By Ingredients</button>
             <button id="tab-cravings" class="flex-1 py-3 font-semibold border-b-2 border-transparent hover:bg-emerald-50">Healthy Cravings</button>
           </div>
-          <!-- Ingredients Tab -->
           <div id="ingredients-panel" class="p-6">
             <div class="text-lg font-bold mb-4">What's in your kitchen?</div>
             <div class="grid grid-cols-2 gap-4 mb-6 max-h-64 overflow-y-auto" id="ingredients-list">
-              <!-- JS will populate checkboxes here -->
-            </div>
+              </div>
             <button id="find-recipe" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-2 rounded-lg flex items-center justify-center gap-2">
               <span id="find-recipe-spinner" class="hidden animate-spin"><svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke-opacity="0.2"/><path d="M12 2a10 10 0 0 1 10 10" /></svg></span>
               <span>Find Recipe</span>
             </button>
           </div>
-          <!-- Cravings Tab -->
           <div id="cravings-panel" class="p-6 hidden">
             <div class="text-lg font-bold mb-4">Craving something unhealthy?</div>
             <div class="space-y-2 mb-6">
@@ -73,7 +67,6 @@
         </div>
       </div>
 
-      <!-- Right Side - Result -->
       <div>
         <div class="bg-white rounded-2xl shadow-xl min-h-full border-0">
           <div class="p-6 border-b">
@@ -81,7 +74,6 @@
           </div>
           <div class="p-6" id="recipe-result">
             <div class="text-center text-gray-500 h-64 flex flex-col items-center justify-center">
-              <!-- Utensils SVG -->
               <svg class="w-12 h-12 mb-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                 <path d="M4 3v7a4 4 0 0 0 4 4h0a4 4 0 0 0 4-4V3" />
                 <path d="M8 21v-4" />
@@ -165,7 +157,7 @@
 
       const systemPrompt = "You are a professional chef specializing in healthy, quick, and easy recipes. Your task is to generate a complete recipe based on a list of ingredients. The output must be in a clean, human-readable markdown format. Provide a title, a short description, a list of ingredients, and step-by-step instructions. Finally, conclude with a single, helpful 'Chef's Tip' or 'Serving Suggestion' related to the recipe. Do not include any unnecessary text or conversational filler.";
       const userQuery = `Create a healthy and delicious recipe using the following ingredients: ${selected.join(', ')}`;
-      const apiKey = "";
+      const apiKey = "AIzaSyABdgOT5K9BLCg7MpPbYQAQHSwNYdZMrYA";
       const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
       const payload = {
         contents: [{ parts: [{ text: userQuery }] }],
@@ -225,7 +217,7 @@
 
       const systemPrompt = "You are a health-conscious food expert. Given a craving, provide a single, concise healthy alternative. Your response should be a simple sentence. Do not add any extra text, titles, or conversational filler.";
       const userQuery = `Find a healthy alternative for the craving: ${craving}`;
-      const apiKey = "";
+      const apiKey = "AIzaSyABdgOT5K9BLCg7MpPbYQAQHSwNYdZMrYA";
       const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
       const payload = {
         contents: [{ parts: [{ text: userQuery }] }],
